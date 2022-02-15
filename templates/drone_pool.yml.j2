@@ -1,0 +1,35 @@
+name: ubuntu
+min_pool_size: 1      # Pool cache size
+max_pool_size: 1      # Set this value same as min_pool_size
+
+account:
+  region: {{ aws_region }}
+
+instance:
+  ami: {{ linux_ami_id }}
+  type: {{ linux_instance_type }}
+  network:
+    vpc: {{ vpc_id }}
+    subnet_id: {{ subnet_id }}
+    security_groups:
+      - {{ security_group }}
+
+---
+name: windows
+min_pool_size: 2      # Pool cache size
+max_pool_size: 2      # Set this value same as min_pool_size
+
+platform:
+ os: windows
+
+account:
+  region: {{ aws_region }}
+
+instance:
+  ami: {{ windows_ami_id }}
+  type: {{ windows_instance_type }}
+  network:
+    vpc: {{ vpc_id }}
+    subnet_id: {{ subnet_id }}
+    security_groups:
+      - {{ security_group }}
