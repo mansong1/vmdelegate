@@ -12,12 +12,12 @@ aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
 aws_access_key_secret = os.getenv('AWS_SECRET_ACCESS_KEY')
 
 ec2_type = "t3.medium"
-key_name = ""
-harness_delegate_name = ""
+key_name = "mansong"
+harness_delegate_name = "aws-cdk-delegate-harness"
 harness_org_identifier = "default"
 harness_project_identifier = ""
-harness_account_id = ""
-harness_account_secret = ""
+harness_account_id = "BKB_Vic2RbWnsMSUAWTgXw"
+harness_account_secret = "fed4d8b84c91279e84e4f2acc87ba440"
 linux_instance_type = "t3.medium",
 windows_instance_type = "t3.medium",
 
@@ -74,7 +74,7 @@ class VmdelegateStack(Stack):
                     name="public",
                     subnet_type=ec2.SubnetType.PUBLIC,
                     cidr_mask=24
-                )
+                ),
                 # ec2.SubnetConfiguration(
                 #     name="private",
                 #     subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT,
@@ -138,9 +138,9 @@ class VmdelegateStack(Stack):
                     "config": ec2.InitConfig([
                         ec2.InitGroup.from_name("docker"),
 
-                        ec2.InitFile.from_string("/runner/.env.yml", env_file),
-                        ec2.InitFile.from_string("/runner/.drone_pool.yml",drone_pool),
-                        ec2.InitFile.from_string("/runner/docker-compose.yml", docker_compose),
+                        ec2.InitFile.from_string("/runner/.env.yml", env_file, base64_encoded=True),
+                        ec2.InitFile.from_string("/runner/.drone_pool.yml",drone_pool, base64_encoded=True),
+                        ec2.InitFile.from_string("/runner/docker-compose.yml", docker_compose, base64_encoded=True),
                     ])
                 }
                 ),
