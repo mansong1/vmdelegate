@@ -1,4 +1,4 @@
-from jinja2 import render_template
+from jinja2 import FileSystemLoader, Template, Environment
 from aws_cdk import (
     CfnOutput,
     Stack,
@@ -6,12 +6,31 @@ from aws_cdk import (
 import aws_cdk.aws_ec2 as ec2
 from constructs import Construct
 
+
+aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID')
+aws_access_key_secret=os.getenv('AWS_SECRET_ACCESS_KEY')
+
 vpc_id =""
 ec2_type=""
 key_name=""
 linux_ami_id = ec2.GenericLinuxImage({
     "us-east-2": "ami-0fb653ca2d3203ac1",
 })
+
+templates = Environment(
+    autoescape=True,
+    loader=FileSystemLoader("templates")
+)
+
+env_file = templates.get_template("env.j2").render(aws_access_key_id=aws_access_key_id,
+    aws_access_key_secret=aws_access_key_secret,
+    aws_region=os.getenv('AWS_DEFAULT_REGION'),
+    key_name=key_name
+)
+
+#drone_pool = Template.render("drone_pool.j2", vpc_id=vpc_id, ec2_type=ec2_type, key_name=key_name)
+#docker_compose = Template.render("docker-compose.yml", vpc_id=vpc_id, ec2_type=ec2_type, key_name=key_name)
+
 
 class VmdelegateStack(Stack):
 
@@ -47,9 +66,9 @@ class VmdelegateStack(Stack):
                         ec2.InitPackage.apt("docker.io"),]),
                     "config": ec2.InitConfig([
 
-                        ec2.InitFile.from_string("/runner/.env.yml", content),
-                        ec2.InitFile.from_string("/runner/.drone_pool.yml", content),
-                        ec2.InitFile.from_string("/runner/docker-compose.yml", content),
+                        ec2.InitFile.from_string("/runner/.env.yml", env_file),
+                        ec2.InitFile.from_string("/runner/.drone_pool.yml", drone_pool),
+                        ec2.InitFile.from_string("/runner/docker-compose.yml", docker_compose),
 
                         ec2.InitGroup.from_name("docker"),
                     ])
