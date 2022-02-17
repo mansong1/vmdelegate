@@ -138,7 +138,7 @@ class VmdelegateStack(Stack):
                         ec2.InitCommand.shell_command("sudo systemctl start docker.service"),
                     ]),
                     "config_step3": ec2.InitConfig([
-                        ec2.InitFile.from_string("/runner/.env.yml", env_file),
+                        ec2.InitFile.from_string("/runner/.env", env_file),
                         ec2.InitFile.from_string("/runner/.drone_pool.yml", drone_pool),
                         ec2.InitFile.from_string("/runner/docker-compose.yml", docker_compose),
                         ec2.InitCommand.shell_command("sudo ssh-keygen -f /runner/id_rsa -q -P \"\" -C \"harness-delegate\""),
