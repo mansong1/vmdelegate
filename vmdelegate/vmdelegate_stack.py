@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 from configparser import ConfigParser
 from jinja2 import FileSystemLoader, Environment
@@ -23,9 +24,6 @@ linux_ami_id = ec2.GenericLinuxImage({
 windows_ami_id = ec2.GenericWindowsImage({
     "us-east-2": "ami-04d852871ae97b000",
 })
-
-with open("assets/init.sh", 'r') as init_script:
-    init_script_contents = init_script.read()
 
 templates = Environment(
     autoescape=True,
@@ -108,7 +106,9 @@ class VmdelegateStack(Stack):
                 linux_pool_instance_type=aws_config["linux_pool_instance_type"],
                 windows_pool_instance_type=aws_config["windows_pool_instance_type"],
             )
-
+        # https://docs.aws.amazon.com/cdk/api/latest/python/aws_cdk.aws_ec2/ApplyCloudFormationInitOptions.html#applycloudformationinitoptions
+        # Note, if CloudFormationInit is specified, with config_sets, then config_sets are implicitly activated via ApplyCloudFormationInitOptions
+        # There is no need to explicitly call cfn-init with configset in UserData script because it's done implicitly!
         instance = ec2.Instance(
             self, "HarnessDelegate",
             instance_type=ec2.InstanceType(instance_type_identifier=harness_config["harness_delegate_instance_type"]),
@@ -117,23 +117,40 @@ class VmdelegateStack(Stack):
             vpc=vpc,
             security_group=security_group,
             key_name=aws_config['key_name'],
-            user_data=ec2.UserData.custom(init_script_contents),
             init=ec2.CloudFormationInit.from_config_sets(
                 config_sets={
-                    "default": ["config"]
+                    "ConfigSet1": ["config_step1", "config_step2"],
+                    "ConfigSet2": ["config_step3", "config_step4"],
                 },
                 configs={
-                    "config": ec2.InitConfig([
-                        ec2.InitFile.from_string("/runner/.env.yml", env_file, base64_encoded=True),
-                        ec2.InitFile.from_string("/runner/.drone_pool.yml", drone_pool, base64_encoded=True),
-                        ec2.InitFile.from_string("/runner/docker-compose.yml", docker_compose, base64_encoded=True),
+                    "config_step1": ec2.InitConfig([
+                        ec2.InitPackage.yum("docker"),
+                        ec2.InitPackage.yum("wget"),
+                        ec2.InitCommand.shell_command("sudo yum update -y"),
+                    ]),
+                    "config_step2": ec2.InitConfig([
+                        ec2.InitCommand.shell_command("wget https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)"),
+                        ec2.InitCommand.shell_command("sudo mv docker-compose-$(uname -s)-$(uname -m) /usr/local/bin/docker-compose"),
+                        ec2.InitCommand.shell_command("sudo chmod +x /usr/local/bin/docker-compose"),
                         ec2.InitGroup('docker'),
-                        ec2.InitCommand.shell_command("sudo docker-compose up -d")
-                    ])
-                }),
+                        ec2.InitCommand.shell_command("sudo usermod -aG docker ec2-user"),
+                        ec2.InitCommand.shell_command("export PATH=$PATH:/usr/local/bin/docker-compose"),
+                        ec2.InitCommand.shell_command("sudo systemctl enable docker"),
+                    ]),
+                    "config_step3": ec2.InitConfig([
+                        ec2.InitFile.from_string("/runner/.env.yml", env_file),
+                        ec2.InitFile.from_string("/runner/.drone_pool.yml", drone_pool),
+                        ec2.InitFile.from_string("/runner/docker-compose.yml", docker_compose),
+                        ec2.InitCommand.shell_command("ssh-keygen -f /runner/id_rsa -q -P """),
+                    ]),
+                    "config_step4": ec2.InitConfig([
+                        ec2.InitCommand.shell_command("sudo docker-compose -f /runner/docker-compose.yml up -d"),
+                    ]),
+                }
+            ),
             init_options=ec2.ApplyCloudFormationInitOptions(
-                config_sets=["default"],
-                ignore_failures=False,
+                config_sets=["ConfigSet1", "ConfigSet2"],
+                ignore_failures=True,
                 timeout=Duration.minutes(10)
             )
         )
