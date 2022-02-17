@@ -17,13 +17,8 @@ cfg.read('config.ini')
 aws_config = cfg['AWSINFO']
 harness_config = cfg['HARNESSINFO']
 
-linux_ami_id = ec2.GenericLinuxImage({
-    "us-east-2": "ami-0fb653ca2d3203ac1",
-})
-
-windows_ami_id = ec2.GenericWindowsImage({
-    "us-east-2": "ami-04d852871ae97b000",
-})
+linux_image = ec2.MachineImage.latest_amazon_linux(generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2)
+windows_image = ec2.MachineImage.latest_windows(ec2.WindowsVersion.WINDOWS_SERVER_2019_ENGLISH_CORE_CONTAINERSLATEST)
 
 templates = Environment(
     autoescape=True,
@@ -69,9 +64,12 @@ class VmdelegateStack(Stack):
         )
 
         # Instance Role and SSM Managed Policy
-        role = iam.Role(self, "InstanceSSM", assumed_by=iam.ServicePrincipal("ec2.amazonaws.com"))
-
-        role.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSSMManagedInstanceCore"))
+        role=iam.Role(
+            self,
+            'InstanceRole',
+            assumed_by=iam.ServicePrincipal('ec2.amazonaws.com'),
+            managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore')]
+        )
 
         security_group = ec2.SecurityGroup(
             self, "SecurityGroup",
@@ -111,6 +109,7 @@ class VmdelegateStack(Stack):
         # There is no need to explicitly call cfn-init with configset in UserData script because it's done implicitly!
         instance = ec2.Instance(
             self, "HarnessDelegate",
+            role=role,
             instance_type=ec2.InstanceType(instance_type_identifier=harness_config["harness_delegate_instance_type"]),
             instance_name="HarnessDelegate",
             machine_image=amzn_linux,
@@ -135,13 +134,13 @@ class VmdelegateStack(Stack):
                         ec2.InitGroup('docker'),
                         ec2.InitCommand.shell_command("sudo usermod -aG docker ec2-user"),
                         ec2.InitCommand.shell_command("export PATH=$PATH:/usr/local/bin/docker-compose"),
-                        ec2.InitCommand.shell_command("sudo systemctl enable docker"),
+                        ec2.InitCommand.shell_command("sudo systemctl enable docker.service"),
                     ]),
                     "config_step3": ec2.InitConfig([
                         ec2.InitFile.from_string("/runner/.env.yml", env_file),
                         ec2.InitFile.from_string("/runner/.drone_pool.yml", drone_pool),
                         ec2.InitFile.from_string("/runner/docker-compose.yml", docker_compose),
-                        ec2.InitCommand.shell_command("ssh-keygen -f /runner/id_rsa -q -P """),
+                        ec2.InitCommand.shell_command("sudo ssh-keygen -f /runner/id_rsa -q -P """),
                     ]),
                     "config_step4": ec2.InitConfig([
                         ec2.InitCommand.shell_command("sudo docker-compose -f /runner/docker-compose.yml up -d"),
@@ -155,4 +154,4 @@ class VmdelegateStack(Stack):
             )
         )
 
-        CfnOutput(self, "Output", value=instance.instance_public_ip)
+        CfnOutput(self, "ConnectCommand", value=f'aws ssm start-session --target {host.instance_id}')
