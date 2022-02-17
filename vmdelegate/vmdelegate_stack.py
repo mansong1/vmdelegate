@@ -95,12 +95,12 @@ class VmdelegateStack(Stack):
             connection=ec2.Port.tcp(1), description="Allow ICMP")
 
         drone_pool = templates.get_template("drone_pool.yml.j2").render(
-                aws_region=os.getenv('AWS_DEFAULT_REGION'),
+                aws_region=Stack.of(self).region,
                 vpc_id=vpc.vpc_id,
                 subnet_id=subnet_public.subnet_id,
                 security_group=security_group.security_group_id,
-                linux_ami_id=linux_ami_id,
-                windows_ami_id=windows_ami_id,
+                linux_ami_id=linux_image,
+                windows_ami_id=windows_image,
                 linux_pool_instance_type=aws_config["linux_pool_instance_type"],
                 windows_pool_instance_type=aws_config["windows_pool_instance_type"],
             )
@@ -112,7 +112,7 @@ class VmdelegateStack(Stack):
             role=role,
             instance_type=ec2.InstanceType(instance_type_identifier=harness_config["harness_delegate_instance_type"]),
             instance_name="HarnessDelegate",
-            machine_image=amzn_linux,
+            machine_image=linux_image,
             vpc=vpc,
             security_group=security_group,
             key_name=aws_config['key_name'],
@@ -135,15 +135,16 @@ class VmdelegateStack(Stack):
                         ec2.InitCommand.shell_command("sudo usermod -aG docker ec2-user"),
                         ec2.InitCommand.shell_command("export PATH=$PATH:/usr/local/bin/docker-compose"),
                         ec2.InitCommand.shell_command("sudo systemctl enable docker.service"),
+                        ec2.InitCommand.shell_command("sudo systemctl start docker.service"),
                     ]),
                     "config_step3": ec2.InitConfig([
                         ec2.InitFile.from_string("/runner/.env.yml", env_file),
                         ec2.InitFile.from_string("/runner/.drone_pool.yml", drone_pool),
                         ec2.InitFile.from_string("/runner/docker-compose.yml", docker_compose),
-                        ec2.InitCommand.shell_command("sudo ssh-keygen -f /runner/id_rsa -q -P """),
+                        ec2.InitCommand.shell_command("sudo ssh-keygen -f /runner/id_rsa -q -P \"\" -C \"harness-delegate\""),
                     ]),
                     "config_step4": ec2.InitConfig([
-                        ec2.InitCommand.shell_command("sudo docker-compose -f /runner/docker-compose.yml up -d"),
+                        ec2.InitCommand.shell_command("docker-compose -f /runner/docker-compose.yml up -d"),
                     ]),
                 }
             ),
@@ -154,4 +155,4 @@ class VmdelegateStack(Stack):
             )
         )
 
-        CfnOutput(self, "ConnectCommand", value=f'aws ssm start-session --target {host.instance_id}')
+        CfnOutput(self, "ConnectCommand", value=f'aws ssm start-session --target {instance.instance_id}')
