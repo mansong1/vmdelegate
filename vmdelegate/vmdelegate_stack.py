@@ -25,12 +25,6 @@ templates = Environment(
     loader=FileSystemLoader("templates")
 )
 
-env_file = templates.get_template("env.j2").render(
-    key_name=aws_config["key_name"],
-    aws_region=os.getenv('AWS_DEFAULT_REGION'),
-    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-    aws_access_key_secret=os.getenv('AWS_SECRET_ACCESS_KEY'),
-)
 
 docker_compose = templates.get_template("docker-compose.yml.j2").render(
     delegate_tags=harness_config["harness_delegate_tags"],
@@ -45,6 +39,13 @@ class VmdelegateStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        env_file = templates.get_template("env.j2").render(
+            key_name=aws_config["key_name"],
+            aws_region=Stack.of(self).region,
+            aws_access_key_id="",
+            aws_access_key_secret="",
+        )
 
         # VPC
         vpc = ec2.Vpc(
@@ -99,8 +100,8 @@ class VmdelegateStack(Stack):
                 vpc_id=vpc.vpc_id,
                 subnet_id=subnet_public.subnet_id,
                 security_group=security_group.security_group_id,
-                linux_ami_id=linux_image,
-                windows_ami_id=windows_image,
+                linux_ami_id=linux_image.get_image(self).image_id,
+                windows_ami_id=windows_image.get_image(self).image_id,
                 linux_pool_instance_type=aws_config["linux_pool_instance_type"],
                 windows_pool_instance_type=aws_config["windows_pool_instance_type"],
             )
@@ -111,7 +112,7 @@ class VmdelegateStack(Stack):
             self, "HarnessDelegate",
             role=role,
             instance_type=ec2.InstanceType(instance_type_identifier=harness_config["harness_delegate_instance_type"]),
-            instance_name="HarnessDelegate",
+            instance_name=harness_config["harness_delegate_name"],
             machine_image=linux_image,
             vpc=vpc,
             security_group=security_group,
