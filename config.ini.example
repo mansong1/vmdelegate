@@ -1,0 +1,13 @@
+[HARNESSINFO]
+harness_delegate_name =
+harness_org_identifier =
+harness_project_identifier =
+harness_account_id =
+harness_account_secret =
+harness_delegate_tags =
+harness_delegate_instance_type =
+
+[AWSINFO]
+key_name =
+linux_pool_instance_type =
+windows_pool_instance_type =
