@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 from configparser import ConfigParser
 from jinja2 import FileSystemLoader, Environment
 from aws_cdk import (
@@ -25,7 +24,6 @@ templates = Environment(
     loader=FileSystemLoader("templates")
 )
 
-
 docker_compose = templates.get_template("docker-compose.yml.j2").render(
     delegate_tags=harness_config["harness_delegate_tags"],
     harness_account_id=harness_config["harness_account_id"],
@@ -42,9 +40,7 @@ class VmdelegateStack(Stack):
 
         env_file = templates.get_template("env.j2").render(
             key_name=aws_config["key_name"],
-            aws_region=Stack.of(self).region,
-            aws_access_key_id="",
-            aws_access_key_secret="",
+            aws_region=Stack.of(self).region
         )
 
         # VPC
@@ -69,7 +65,10 @@ class VmdelegateStack(Stack):
             self,
             'InstanceRole',
             assumed_by=iam.ServicePrincipal('ec2.amazonaws.com'),
-            managed_policies=[iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore')]
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name('AmazonSSMManagedInstanceCore'),
+                iam.ManagedPolicy.from_aws_managed_policy_name('AmazonEC2FullAccess')  # TODO restrict permissions
+            ]
         )
 
         security_group = ec2.SecurityGroup(
