@@ -39,7 +39,6 @@ class VmdelegateStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         env_file = templates.get_template("env.j2").render(
-            key_name=aws_config["key_name"],
             aws_region=Stack.of(self).region
         )
 
@@ -115,7 +114,6 @@ class VmdelegateStack(Stack):
             machine_image=linux_image,
             vpc=vpc,
             security_group=security_group,
-            key_name=aws_config['key_name'],
             init=ec2.CloudFormationInit.from_config_sets(
                 config_sets={
                     "ConfigSet1": ["config_step1", "config_step2"],
