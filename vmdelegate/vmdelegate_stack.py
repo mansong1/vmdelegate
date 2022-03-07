@@ -16,7 +16,12 @@ cfg.read('config.ini')
 aws_config = cfg['AWSINFO']
 harness_config = cfg['HARNESSINFO']
 
-linux_image = ec2.MachineImage.latest_amazon_linux(generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2)
+linux_image = ec2.MachineImage.latest_amazon_linux(
+                generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
+                edition=ec2.AmazonLinuxEdition.STANDARD,
+                virtualization=ec2.AmazonLinuxVirt.HVM,
+                storage=ec2.AmazonLinuxStorage.GENERAL_PURPOSE)
+
 windows_image = ec2.MachineImage.latest_windows(ec2.WindowsVersion.WINDOWS_SERVER_2019_ENGLISH_CORE_CONTAINERSLATEST)
 
 templates = Environment(
@@ -50,14 +55,6 @@ class VmdelegateStack(Stack):
         )
 
         subnet_public = vpc.public_subnets[0]
-
-        # AMI
-        amzn_linux = ec2.MachineImage.latest_amazon_linux(
-            generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
-            edition=ec2.AmazonLinuxEdition.STANDARD,
-            virtualization=ec2.AmazonLinuxVirt.HVM,
-            storage=ec2.AmazonLinuxStorage.GENERAL_PURPOSE
-        )
 
         # Instance Role and SSM Managed Policy
         role=iam.Role(
