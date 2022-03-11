@@ -95,7 +95,7 @@ class VmdelegateStack(Stack):
                 vpc_id=vpc.vpc_id,
                 subnet_id=subnet_public.subnet_id,
                 security_group=security_group.security_group_id,
-                linux_ami_id=linux_image.get_image(self).image_id,
+                linux_ami_id="ami-0bab3ad7a6654c437",
                 windows_ami_id=windows_image.get_image(self).image_id,
                 linux_pool_instance_type=aws_config["linux_pool_instance_type"],
                 windows_pool_instance_type=aws_config["windows_pool_instance_type"],
