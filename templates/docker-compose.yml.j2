@@ -33,7 +33,7 @@ services:
       - INIT_SCRIPT=echo "Docker delegate init script executed."
   drone-runner-aws:
     restart: unless-stopped
-    image: drone/drone-runner-aws:1.0.0-rc.4
+    image: drone/drone-runner-aws:v1.0.0-rc.6
     volumes:
       - .:/runner
     entrypoint: ["/bin/drone-runner-aws", "delegate"]
